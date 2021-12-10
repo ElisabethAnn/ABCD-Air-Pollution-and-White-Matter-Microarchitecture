@@ -1,0 +1,776 @@
+---
+title: "Check - Full Shell Data"
+author: "elisabethburnor"
+date: "6/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(lme4)
+library(ggeffects)
+library(splines)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(lme4)
+library(emmeans)
+library(splines)
+library(stats)
+library(piecewiseSEM)
+library(kableExtra)
+library(HLMdiag)
+library(nlme)
+
+```
+
+```{r}
+
+df <- readRDS("path_to_data_file.RDS")
+
+```
+
+```{r, echo = FALSE}
+
+# Put data into long format
+fs_df_long <- reshape(df, varying = list(c("dtifs_fa_fxrh", "dtifs_fa_fxlh"),
+                                         c("dtifs_fa_cgcrh", "dtifs_fa_cgclh"),
+                                         c("dtifs_fa_cghrh", "dtifs_fa_cghlh"),
+                                         c("dtifs_fa_cstrh", "dtifs_fa_cstlh"),
+                                         c("dtifs_fa_atrrh", "dtifs_fa_atrlh"),
+                                         c("dtifs_fa_uncrh", "dtifs_fa_unclh"),
+                                         c("dtifs_fa_ilfrh", "dtifs_fa_ilflh"),
+                                         c("dtifs_fa_iforh", "dtifs_fa_ifolh"),
+                                         c("dtifs_fa_slfrh", "dtifs_fa_slflh"),
+                                         c("dtifs_fa_allfibrh", "dtifs_fa_allfiblh"),
+                                         
+                                         c("dtifs_md_fxrh", "dtifs_md_fxlh"),
+                                         c("dtifs_md_cgcrh", "dtifs_md_cgclh"),
+                                         c("dtifs_md_cghrh", "dtifs_md_cghlh"),
+                                         c("dtifs_md_cstrh", "dtifs_md_cstlh"),
+                                         c("dtifs_md_atrrh", "dtifs_md_atrlh"),
+                                         c("dtifs_md_uncrh", "dtifs_md_unclh"),
+                                         c("dtifs_md_ilfrh", "dtifs_md_ilflh"),
+                                         c("dtifs_md_iforh", "dtifs_md_ifolh"),
+                                         c("dtifs_md_slfrh", "dtifs_md_slflh"),
+                                         c("dtifs_md_allfibrh", "dtifs_md_allfiblh"),
+                                         
+                                         c('dmri_rsin0_fiberat_cgcrh','dmri_rsin0_fiberat_cgclh'),
+                                   c('dmri_rsin0_fiberat_cghrh','dmri_rsin0_fiberat_cghlh'),
+                                   c('dmri_rsin0_fiberat_atrrh','dmri_rsin0_fiberat_atrlh'),
+                                   c('dmri_rsin0_fiberat_uncrh','dmri_rsin0_fiberat_unclh'),
+                                   c('dmri_rsin0_fiberat_iforh','dmri_rsin0_fiberat_ifolh'),
+                                   c('dmri_rsin0_fiberat_slfrh','dmri_rsin0_fiberat_slflh'),
+                                   c('dmri_rsin0_fiberat_fxrh','dmri_rsin0_fiberat_fxlh'),
+                                   c('dmri_rsin0_fiberat_cstrh','dmri_rsin0_fiberat_cstlh'),
+                                   c('dmri_rsin0_fiberat_ilfrh','dmri_rsin0_fiberat_ilflh'),
+                                   c('dmri_rsin0_fiberat_allfibrh','dmri_rsin0_fiberat_allfiblh'),
+                                   
+                                   c('dmri_rsind_fiberat_cgcrh','dmri_rsind_fiberat_cgclh'),
+                                   c('dmri_rsind_fiberat_cghrh','dmri_rsind_fiberat_cghlh'),
+                                   c('dmri_rsind_fiberat_atrrh','dmri_rsind_fiberat_atrlh'),
+                                   c('dmri_rsind_fiberat_uncrh','dmri_rsind_fiberat_unclh'),
+                                   c('dmri_rsind_fiberat_iforh','dmri_rsind_fiberat_ifolh'),
+                                   c('dmri_rsind_fiberat_slfrh','dmri_rsind_fiberat_slflh'),
+                                   c('dmri_rsind_fiberat_fxrh','dmri_rsind_fiberat_fxlh'),
+                                   c('dmri_rsind_fiberat_cstrh','dmri_rsind_fiberat_cstlh'),
+                                   c('dmri_rsind_fiberat_ilfrh','dmri_rsind_fiberat_ilflh'),
+                                   c('dmri_rsind_fiberat_allfibrh','dmri_rsind_fiberat_allfiblh'),
+                                   
+                                   c('dmri_rsints2_fiberat_cgcrh','dmri_rsints2_fiberat_cgclh'),
+                                   c('dmri_rsints2_fiberat_cghrh','dmri_rsints2_fiberat_cghlh'),
+                                   c('dmri_rsints2_fiberat_atrrh','dmri_rsints2_fiberat_atrlh'),
+                                   c('dmri_rsints2_fiberat_uncrh','dmri_rsints2_fiberat_unclh'),
+                                   c('dmri_rsints2_fiberat_iforh','dmri_rsints2_fiberat_ifolh'),
+                                   c('dmri_rsints2_fiberat_slfrh','dmri_rsints2_fiberat_slflh'),
+                                   c('dmri_rsints2_fiberat_fxrh','dmri_rsints2_fiberat_fxlh'),
+                                   c('dmri_rsints2_fiberat_cstrh','dmri_rsints2_fiberat_cstlh'),
+                                   c('dmri_rsints2_fiberat_ilfrh','dmri_rsints2_fiberat_ilflh'),
+                                   c('dmri_rsints2_fiberat_allfibrh','dmri_rsints2_fiberat_allfiblh')),
+                      
+                      v.names = c("fs_fa_fx", "fs_fa_cgc", "fs_fa_cgh", "fs_fa_cst", "fs_fa_atr",
+                                  "fs_fa_unc", "fs_fa_ilf", "fs_fa_ifo", "fs_fa_slf", "fs_fa_allfib",
+                                  
+                                  "fs_md_fx", "fs_md_cgc", "fs_md_cgh", "fs_md_cst", "fs_md_atr",
+                                  "fs_md_unc", "fs_md_ilf", "fs_md_ifo", "fs_md_slf", "fs_md_allfib",
+                                  
+                                  'rsin0_cgc', 'rsin0_cgh', 'rsin0_atr', 'rsin0_unc', 'rsin0_ifo', 'rsin0_slf',
+                                  'rsin0_fx', 'rsin0_cst', 'rsin0_ilf', 'rsin0_allfib',
+                            
+                            'rsind_cgc', 'rsind_cgh', 'rsind_atr', 'rsind_unc', 'rsind_ifo', 'rsind_slf',
+                            'rsind_fx', 'rsind_cst', 'rsind_ilf', 'rsind_allfib',
+                            
+                            'rsints2_cgc', 'rsints2_cgh', 'rsints2_atr', 'rsints2_unc', 'rsints2_ifo',
+                            'rsints2_slf', 'rsints2_fx', 'rsints2_cst', 'rsints2_ilf', 'rsints2_allfib'), 
+                      idvar = "subjectkey", timevar= "hemisphere", times = c("right", "left"), direction = "long")
+
+```
+
+
+```{r outcome setup, echo = FALSE}
+# Data
+
+savepath <- "path_for_output"
+my.knots <- attr(ns(df$pm2.5, 3), "knots")
+
+diffusion = c(rep("DTI", 20), rep("RSI", 30))
+
+dti = c(rep("FA", 10), rep("MD", 10), rep("N0", 10), rep("ND", 10), rep("NTS2", 10))
+
+outcomes <- c("fs_fa_cgc", "fs_fa_cgh", "fs_fa_atr", "fs_fa_unc", "fs_fa_ifo", "fs_fa_slf", "fs_fa_fx", "fs_fa_cst",
+              "fs_fa_ilf", "fs_fa_allfib",
+              "fs_md_cgc", "fs_md_cgh", "fs_md_atr", "fs_md_unc", "fs_md_ifo", "fs_md_slf", "fs_md_fx","fs_md_cst",
+              "fs_md_ilf", "fs_md_allfib", 
+              
+              'rsin0_cgc', 'rsin0_cgh', 'rsin0_atr', 'rsin0_unc', 'rsin0_ifo', 'rsin0_slf', 
+              'rsin0_fx', 'rsin0_cst', 'rsin0_ilf', 'rsin0_allfib',
+              'rsind_cgc', 'rsind_cgh', 'rsind_atr', 'rsind_unc', 'rsind_ifo', 'rsind_slf',
+              'rsind_fx', 'rsind_cst', 'rsind_ilf', 'rsind_allfib',
+              'rsints2_cgc', 'rsints2_cgh', 'rsints2_atr', 'rsints2_unc', 'rsints2_ifo',
+              'rsints2_slf', 'rsints2_fx', 'rsints2_cst', 'rsints2_ilf', 'rsints2_allfib')
+
+tracts <- rep(c("cgc", "cgh", "atr", "unc", "ifo", "slf", "fx", "cst", "ilf", "allfib"), 5)
+tract_names <- toupper(all_tracts)
+
+long_key <- data.frame(diffusion, dti, outcomes, tracts, tract_names)
+
+```
+
+```{r Fit interactions, echo = FALSE}
+
+key <- long_key
+df_HEI <- fs_df_long
+
+interaction_anova_tbl <- data.frame()
+linear_intx_anova_tbl <- data.frame()
+null_anova_tbl <- data.frame()
+nonlin_anova_tbl <- data.frame()
+
+models <- list()
+for (i in 1:length(outcomes)) {
+
+  tract <- key$tract_names[which(key$outcomes == outcomes[i])]
+  dti <- key$dti[which(key$tract_names == tract)]
+  
+  # Fit model with interaction term for hemisphere
+  mo_hem_intx <- lmer(as.formula(paste(outcomes[i], "~", 'ns(pm2.5, knots = my.knots)*hemisphere + sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site) + (1 | abcd_site:subjectkey)')), data = df_HEI, REML = FALSE, na.action = na.omit)
+  
+  # Fit model without interaction term for hemisphere
+  mo_hem <- lmer(as.formula(paste(outcomes[i], "~", 'ns(pm2.5, 3) + hemisphere + sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site) + (1 | abcd_site:subjectkey)')), data = df_HEI, REML = FALSE, na.action = na.omit)
+
+  check_intx <- anova(mo_hem, mo_hem_intx)
+
+  intx_anova <- data.frame("Outcome" = outcomes[i], "Tract" = tract, "p-value" = check_intx[2,"Pr(>Chisq)"])
+  interaction_anova_tbl <- rbind(interaction_anova_tbl, intx_anova)
+
+  null_mo <- lmer(as.formula(paste(outcomes[i], "~", 'hemisphere + sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site) + (1 | abcd_site:subjectkey)')),
+                      data = df_HEI, REML = FALSE, na.action = na.omit)
+  
+  linear_mo <- lmer(as.formula(paste(outcomes[i], "~", 'pm2.5 + hemisphere + sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site) + (1 | abcd_site:subjectkey)')), 
+                      data = df_HEI, REML = FALSE, na.action = na.omit)
+  
+  linear_mo_intx <- lmer(as.formula(paste(outcomes[i], "~", 'pm2.5*hemisphere + sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site) + (1 | abcd_site:subjectkey)')), 
+                      data = df_HEI, REML = FALSE, na.action = na.omit)
+  
+  check_lin_intx <- anova(linear_mo, linear_mo_intx)
+  lin_intx_anova <- data.frame("Tract" = tract, "p_value" = check_lin_intx$`Pr(>Chisq)`[2])
+  linear_intx_anova_tbl <- rbind(linear_intx_anova_tbl, lin_intx_anova)
+      
+  check_null <- anova(null_mo, mo_hem_intx)
+  null_anova <- data.frame("Outcome" = outcomes[i], "Tract" = tract, "p-value" = check_null[2,"Pr(>Chisq)"])
+  null_anova_tbl <- rbind(null_anova_tbl, null_anova)
+
+  linear_anova <- anova(linear_mo_intx, mo_hem_intx)
+  nonlin_anova <- data.frame("Outcome" = outcomes[i], "Tract" = tract, "p-value" = linear_anova[2,"Pr(>Chisq)"])
+  nonlin_anova_tbl <- rbind(nonlin_anova_tbl, nonlin_anova)
+  
+  r2 <- rsquared(mo_hem_intx)
+
+  models[[tract]][['spline_model']] <- mo_hem_intx
+  models[[tract]][['linear_model']] <- linear_mo_intx
+  models[[tract]][['analyses']]$null_anova <- null_anova
+  models[[tract]][['analyses']]$linear_anova <- linear_anova
+  models[[tract]][['analyses']]$interaction_check <- intx_anova
+  models[[tract]][['analyses']]$r2 <- r2
+  models[[tract]][['outcome']] <- outcomes[i]
+}
+
+```
+
+# Print null anovas
+```{r Print null anova tables}
+
+# Null Table
+null_anova_tbl$adj_p_value <- p.adjust(null_anova_tbl$p.value, method = "BH")
+
+dti_label <- function(outcome) {
+  label <- long_key[which(long_key$outcomes == outcome),"dti"]
+  return(label)
+}
+
+null_anova_tbl$dti <- sapply(null_anova_tbl$Outcome, dti_label)
+null_anova_tbl <- null_anova_tbl %>% relocate(dti, .after = Outcome)
+
+
+kbl(null_anova_tbl, caption = "ANOVA comparison: Spline model with Hemisphere Interaction vs. Null model") %>%
+  kable_classic(full_width = TRUE)
+
+# list of non-null models
+
+sig_non_null <- c()
+for (i in 1:nrow(null_anova_tbl)) {
+  if (null_anova_tbl$adj_p_value[i] < 0.05) sig_non_null <- c(sig_non_null, null_anova_tbl$Outcome[i])
+}
+
+```
+
+# Check residuals
+```{r, include = FALSE}
+
+resids <- function(model_list, anova_results) {
+  
+  sig_mods <- which(anova_results$adj_p_value < 0.05)
+  sig_tracts <- anova_results$Tract[sig_mods]
+  
+  for (j in 1:length(sig_tracts)) {
+    
+    tract <- sig_tracts[[j]]
+    i <- which(key$tract_names == tract)
+    outcome <- key$outcomes[i]
+    
+    formula <- paste0(outcome, "~", 'ns(pm2.5, 3)*hemisphere + sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site) + (1 | abcd_site:subjectkey)')
+    
+    mo <- lmer(as.formula(formula), data = df_HEI, REML = FALSE, na.action = na.omit)
+
+    
+    lvl1_res <- hlm_resid(mo, level = 1, standardize = TRUE, include.ls = FALSE)
+    res_vs_fitted <- qplot(x = .fitted, y = .std.resid, 
+                             data = lvl1_res, geom = c("point", "smooth"),
+                            main = paste0(model_list$name, " ", tract, 
+                                          "\nLevel-1 Std. LS Residuals vs. Fitted Values"),
+                            ylab= "Std. LS Level-1 Residuals", xlab = "Fitted Values")
+    print(res_vs_fitted)
+    qqnorm(lvl1_res$.std.resid, main = paste0(model_list$name, " ", tract, 
+                                          "\nLevel 1 Std. LS Residuals: Normal Q-Q Plot"))
+    qqline(lvl1_res$.std.resid, col = 2, lwd=2,lty=2)
+  }
+}
+
+```
+
+# Anovas to check linearity (splines vs. linear)
+```{r Print linear anova tables}
+
+# Non-Linearity table
+
+nonlin_anova_tbl$dti <- sapply(nonlin_anova_tbl$Outcome, dti_label)
+nonlin_anova_tbl <- nonlin_anova_tbl %>% relocate(dti, .after = Outcome)
+
+nonlin_anova_tbl$adj_p_value <- p.adjust(nonlin_anova_tbl$p.value, method = "BH")
+kbl(nonlin_anova_tbl, caption = "ANOVA comparison: Spline model with interaction term vs. Linear model with interaction term") %>%
+  kable_classic(full_width = TRUE)
+
+```
+
+# Anovas to check hemisphere interaction
+```{r hem intx table}
+# Hemisphere interaction table
+
+interaction_anova_tbl$adj_p_value <- p.adjust(interaction_anova_tbl$p.value, method = "BH")
+
+interaction_anova_tbl$dti <- sapply(interaction_anova_tbl$Outcome, dti_label)
+interaction_anova_tbl <- interaction_anova_tbl %>% relocate(dti, .after = Outcome)
+
+kbl(interaction_anova_tbl, caption = "ANOVA comparison: Hemisphere Interaction vs. Hemipshere as fixed effect") %>%
+  kable_classic(full_width = TRUE)
+
+# Make a list of models with significant interaction terms for post-hoc analysis
+
+sig_intx <- c()
+for (i in 1:length(sig_non_null)) {
+  k <- which(interaction_anova_tbl$Outcome == sig_non_null[i])
+  if (interaction_anova_tbl$adj_p[k] < 0.05) sig_intx <- c(sig_intx, interaction_anova_tbl$Outcome[k])
+}
+
+interactions <- data.frame()
+for (i in 1:length(sig_intx)) {
+  row <- interaction_anova_tbl[which(interaction_anova_tbl$Outcome == sig_intx[i]),]
+  interactions <- rbind(interactions, row)
+}
+row.names(interactions) <- NULL
+kbl(interactions, digits = 4,
+    caption = "Models with Significant Interaction Terms (adj. p < 0.05)") %>%
+    kable_classic(full_width = FALSE)
+
+#write.csv(interaction_anova_tbl, 
+#          paste0(savepath, diffusion, "_", measure, "_intx_anova_tbl.csv"))
+
+```
+
+# R-squared values
+```{r r-squared}
+
+r2_df <- data.frame()
+for (i in 1:length(models)) {
+  r2_df <- rbind(r2_df, models[[i]]$analyses$r2)
+}
+
+r2_df <- cbind(r2_df$Response, round(r2_df$Marginal, 4), round(r2_df$Conditional, 4))
+colnames(r2_df) <- c("Model", "Marginal", "Conditional")
+
+kbl(r2_df, caption = "R-squared Values") %>%
+  kable_classic(full_width = TRUE)
+
+write.csv(r2_df, 
+          paste0(savepath, "md_r2values.csv"))
+```
+
+## Wide analysis
+```{r}
+# Wide dataset key
+
+wide_outcomes <- c("dtifs_fa_cgcrh", "dtifs_fa_cgclh", "dtifs_fa_cghrh", "dtifs_fa_cghrh", "dtifs_fa_atrrh", "dtifs_fa_atrlh",
+                   "dtifs_fa_uncrh", "dtifs_fa_unclh", "dtifs_fa_iforh", "dtifs_fa_ifolh", "dtifs_fa_slfrh", "dtifs_fa_slflh",
+                   "dtifs_fa_fxrh", "dtifs_fa_fxlh", "dtifs_fa_cstrh", "dtifs_fa_cstlh", "dtifs_fa_ilfrh", "dtifs_fa_ilflh",
+                   "dtifs_fa_allfibrh", "dtifs_fa_allfiblh", "dtifs_md_cc",
+                   
+                   "dtifs_md_cgcrh", "dtifs_md_cgclh", "dtifs_md_cghrh", "dtifs_md_cghlh", "dtifs_md_atrrh", "dtifs_md_atrlh",
+                   "dtifs_md_uncrh", "dtifs_md_unclh", "dtifs_md_iforh", "dtifs_md_ifolh", "dtifs_md_slfrh", "dtifs_md_slflh",
+                   "dtifs_md_fxrh", "dtifs_md_fxlh", "dtifs_md_cstrh", "dtifs_md_cstlh", "dtifs_md_ilfrh", "dtifs_md_ilflh",
+                   "dtifs_md_allfibrh", "dtifs_md_allfiblh", "dtifs_fa_cc",
+              
+                                  'dmri_rsin0_fiberat_cgcrh','dmri_rsin0_fiberat_cgclh',
+                                  'dmri_rsin0_fiberat_cghrh','dmri_rsin0_fiberat_cghlh',
+                                  'dmri_rsin0_fiberat_atrrh','dmri_rsin0_fiberat_atrlh',
+                                  'dmri_rsin0_fiberat_uncrh','dmri_rsin0_fiberat_unclh',
+                                   'dmri_rsin0_fiberat_iforh','dmri_rsin0_fiberat_ifolh',
+                                   'dmri_rsin0_fiberat_slfrh','dmri_rsin0_fiberat_slflh',
+                                   'dmri_rsin0_fiberat_fxrh','dmri_rsin0_fiberat_fxlh',
+                                   'dmri_rsin0_fiberat_cstrh','dmri_rsin0_fiberat_cstlh',
+                                   'dmri_rsin0_fiberat_ilfrh','dmri_rsin0_fiberat_ilflh',
+                                   'dmri_rsin0_fiberat_allfibrh','dmri_rsin0_fiberat_allfiblh', 'dmri_rsin0_fiberat_cc',
+                                   
+                                   'dmri_rsind_fiberat_cgcrh','dmri_rsind_fiberat_cgclh',
+                                   'dmri_rsind_fiberat_cghrh','dmri_rsind_fiberat_cghlh',
+                                   'dmri_rsind_fiberat_atrrh','dmri_rsind_fiberat_atrlh',
+                                   'dmri_rsind_fiberat_uncrh','dmri_rsind_fiberat_unclh',
+                                   'dmri_rsind_fiberat_iforh','dmri_rsind_fiberat_ifolh',
+                                   'dmri_rsind_fiberat_slfrh','dmri_rsind_fiberat_slflh',
+                                   'dmri_rsind_fiberat_fxrh','dmri_rsind_fiberat_fxlh',
+                                   'dmri_rsind_fiberat_cstrh','dmri_rsind_fiberat_cstlh',
+                                   'dmri_rsind_fiberat_ilfrh','dmri_rsind_fiberat_ilflh',
+                                   'dmri_rsind_fiberat_allfibrh','dmri_rsind_fiberat_allfiblh', 'dmri_rsind_fiberat_cc',
+                                   
+                                   'dmri_rsints2_fiberat_cgcrh','dmri_rsints2_fiberat_cgclh',
+                                   'dmri_rsints2_fiberat_cghrh','dmri_rsints2_fiberat_cghlh',
+                                   'dmri_rsints2_fiberat_atrrh','dmri_rsints2_fiberat_atrlh',
+                                   'dmri_rsints2_fiberat_uncrh','dmri_rsints2_fiberat_unclh',
+                                   'dmri_rsints2_fiberat_iforh','dmri_rsints2_fiberat_ifolh',
+                                   'dmri_rsints2_fiberat_slfrh','dmri_rsints2_fiberat_slflh',
+                                   'dmri_rsints2_fiberat_fxrh','dmri_rsints2_fiberat_fxlh',
+                                   'dmri_rsints2_fiberat_cstrh','dmri_rsints2_fiberat_cstlh',
+                                   'dmri_rsints2_fiberat_ilfrh','dmri_rsints2_fiberat_ilflh',
+                                   'dmri_rsints2_fiberat_allfibrh','dmri_rsints2_fiberat_allfiblh', 'dmri_rsints2_fiberat_cc')
+
+hemisphere = c(rep(c(rep(c("Right", "Left"), 10), "-"), 5))
+
+tracts <- rep(c("cgc", "cgc", "cgh", "cgh", "atr", "atr", "unc", "unc", "ifo", "ifo", "slf", "slf", "fx", "fx", "cst", 
+              "cst", "ilf", "ilf", "allfib", "allfib", "cc"), 5)
+
+tract_names = toupper(tracts)
+
+key_sep <- data.frame(outcomes = wide_outcomes, hemisphere = hemisphere, tracts = tracts, tract_names = tract_names)
+
+```
+
+```{r, hemisphere-strat models, echo = FALSE}
+# Re-fit models by hemisphere
+
+df_HEI_wide = df
+sep_models <- list()
+
+my.knots <- attr(ns(df$pm2.5, 3), "knots")
+
+sep_null_anova <- data.frame()
+sep_lin_anova <- data.frame()
+
+for (i in 1:nrow(key_sep)) {
+  
+  tract <- key_sep$tracts[i]
+  
+  ### Left
+  outcome <- key_sep$outcomes[i]
+  hemisphere <- key_sep$hemisphere[i]
+  
+  crude <- lmer(as.formula(paste(outcome, "~", 'ns(pm2.5, knots = my.knots) + sex + interview_age  + (1 | abcd_site)')),  data = df_HEI_wide, REML = FALSE, na.action = na.omit)
+  
+  mo <-  lmer(as.formula(paste(outcome, "~", 'ns(pm2.5, knots = my.knots) + sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site)')), 
+                   data = df_HEI_wide, REML = FALSE, na.action = na.omit)
+  
+  null_mo <- lmer(as.formula(paste(outcome, "~", 'sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site)')), 
+                   data = df_HEI_wide, REML = FALSE, na.action = na.omit)
+  
+  lin_mo <- lmer(as.formula(paste(outcome, "~", 'pm2.5 + sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site)')), 
+                   data = df_HEI_wide, REML = FALSE, na.action = na.omit)
+  
+  check_null <- anova(null_mo, mo)
+  null_df <- data.frame("Outcome" = outcome, "Tract" = tract, "Hemisphere" = hemisphere, "p-value" = check_null[2, "Pr(>Chisq)"])
+  sep_null_anova <- rbind(sep_null_anova, null_df)
+  
+  check_lin <- anova(lin_mo, mo)
+  lin_df <- data.frame("Outcome" = outcome, "Tract" = tract, "Hemisphere" = hemisphere, "p-value" = check_lin[2, "Pr(>Chisq)"])
+  sep_lin_anova <- rbind(sep_lin_anova, lin_df)
+  
+  sep_models[[outcome]]$spline_mod <- mo
+  sep_models[[outcome]]$lin_mod <- lin_mo
+  sep_models[[outcome]]$crude <- crude
+  sep_models[[outcome]]$tract <- tract
+  sep_models[[outcome]]$outcome <- outcome
+  sep_models[[outcome]]$hemisphere <- hemisphere
+  sep_models[[outcome]]$r2 <- rsquared(mo)
+}
+
+main_analysis_sep_models = sep_models
+```
+
+# R-squared for hemisphere-stratified models
+```{r r-squared separate models}
+
+r2_df_sep <- data.frame()
+for (i in 1:length(sep_models)) {
+    outcome <- sep_models[[i]]$outcome
+    tract <- sep_models[[i]]$tract
+    hemisphere <- sep_models[[i]]$hemisphere
+    row <- cbind(tract, hemisphere, sep_models[[i]]$r2)
+    r2_df_sep <- rbind(r2_df_sep, row)
+}
+
+r2_df_sep <- as.data.frame(cbind(r2_df_sep$tract, r2_df_sep$hemisphere, r2_df_sep$Response, 
+                   round(r2_df_sep$Marginal, 4), round(r2_df_sep$Conditional, 4)))
+colnames(r2_df_sep) <- c("Tract", "Hemisphere", "Model", "Marginal", "Conditional")
+
+kbl(r2_df_sep, caption = "R-squared Values") %>%
+  kable_classic(full_width = TRUE)
+
+```
+
+# Print tables for non-null hemisphere-stratified models
+```{r}
+
+dti_label_sep <- function(outcome) {
+  label <- key_sep[which(key_sep$outcomes == outcome),"dti"]
+  return(label)
+}
+
+non_null_models <- sep_null_anova[which(sep_null_anova$p.value < 0.05),]
+if (nrow(non_null_models)==0) {
+  print("No non-null models")
+} else {
+  sep_hem_models <- data.frame()
+  
+  for (i in 1:nrow(non_null_models)) {
+    outcome <- non_null_models$Outcome[i]
+    tract <- non_null_models$Tract[i]
+    hemisphere <- tolower(non_null_models$Hemisphere[i])
+    
+    row <- which(r2_df_sep$Model == outcome)
+    
+    newrow <- cbind(non_null_models[i,], r2_df_sep[row,"Marginal"], r2_df_sep[row,"Conditional"])
+    sep_hem_models <- rbind(sep_hem_models, newrow)
+  }
+  
+
+  
+  sep_hem_models$dti <- sapply(sep_hem_models$Outcome, dti_label_sep)
+  sep_hem_models <- sep_hem_models %>% relocate(dti, .after = Outcome)
+  
+  
+  colnames(sep_hem_models) <- c("Outcome", "DTI", "Tract", "Hemisphere", "p_value", "Marginal", "Conditional")
+  
+  row.names(sep_hem_models) <- NULL
+  kbl(sep_hem_models, digits = 4, 
+      caption = "Hemisphere-Stratified Models with Significant Fits (non-Null, p < 0.05)") %>%
+      kable_classic(full_width = TRUE)
+}
+
+```
+
+## Plot significant models
+```{r, warning = FALSE, message = FALSE}
+
+tracts <- c("unc", "atr", "slf", "cgh", "ifo", "cc", "allfib")
+
+md_sig_models = names(sep_models)[c(22, 23, 24, 25, 26, 30, 32,34, 40)]
+# MD colors
+tracts = c("atr", "cgh", "ifo", "slf", "unc", "cc", "allfib")
+color_strings = c("#00FF00", "yellow", "olivedrab3", "cyan3", "skyblue", "red", "black")
+cname = c("bright green", "yellow", "olive", "cyan", "blue", "red", "black")
+color_key <- data.frame(tracts, cname, color_strings)
+
+for (i in 1:length(cc_models)) {
+    
+  model = sep_models[[which(names(sep_models) == md_sig_models[i])]]
+  
+  outcome = model$outcome
+  hem = str_to_title(model$hemisphere)
+  tract = model$tract
+  mo = model$spline_mod
+  df = df_HEI_wide
+  
+  row <- which(color_key$tracts == tract)
+  plot_color <- color_key$color_strings[row]
+
+  grid <- ref_grid(mo, at = list(pm2.5 = seq(3, 13, by = 0.5), age = c(112, 116)), data = df, params = "my.knots")
+    
+  emm <- as.data.frame(emmeans(grid, "pm2.5", params = "my.knots"))
+    
+  colnames(emm) <- c("pm2.5", "emmean", "SE", "df", "LCL", "UCL")
+    
+  plot <- ggplot(data = emm, aes(x = pm2.5)) +
+              geom_line(aes(y = emmean), color = plot_color, size = .8) +
+              geom_ribbon(aes(ymin = LCL, ymax = UCL), fill = plot_color, alpha = 0.3) +
+              xlim(c(3, 13)) +
+              geom_rug(data = df,
+                       aes(x = pm2.5),
+                       alpha = 0.2) + 
+              scale_linetype_manual() +
+              xlab(expression(PM[2.5]~(ug/m^{"3"}))) +
+              ylab(paste0("Mean Diffusivity (MD)")) +
+              ggtitle(label = paste0(toupper(tract), " - ", hem, " Hemisphere")) + 
+              theme(panel.grid.major = element_line(colour = "grey95"), 
+                    panel.grid.minor = element_blank(),
+                    panel.background = element_blank(), 
+                    title = element_text(size = 36),
+                    axis.line = element_line(colour = "black"),
+                    axis.title.x = element_text(size = 32),
+                    axis.title.y = element_text(size = 32),
+                    axis.text = element_text(size = 32),
+                    strip.text = element_text(size = 32))
+    print(plot)
+    
+    
+    filename <- paste0(outcome, '_sensitivity.tiff')
+    tiff(paste0(savepath, filename),
+               height = 20, width = 25, units='cm',compression = "lzw", res = 300)
+    print(plot)
+    dev.off()
+}
+ 
+tracts <- c("unc", "atr", "slf", "cgh", "ifo", "cc", "allfib")
+
+# md_sig_models = names(sep_models)[c(22, 23, 24, 25, 26, 30, 32,34, 40)]
+# # MD colors
+# tracts = c("atr", "cgh", "ifo", "slf", "unc", "cc", "allfib")
+# color_strings = c("#00FF00", "yellow", "olivedrab3", "cyan3", "skyblue", "red", "black")
+# cname = c("bright green", "yellow", "olive", "cyan", "blue", "red", "black")
+# color_key <- data.frame(tracts, cname, color_strings)
+# 
+# ggplot(data = df_HEI_wide, aes(x = pm2.5, y = interview_age)) +
+#   geom_point(color = "skyblue")
+
+  
+
+```
+
+```{r Functions to calculate percent change, echo = FALSE}
+
+# Percent Change Helper Functions
+# Factor variable levels
+
+set_levels <- function(mo, df) {
+
+  high_education <- levels(df$high.educ)
+  income <- levels(df$overall.income)
+  income <- income[1:3]
+  age_level_6 <- as.integer(c(119, 125))
+  
+  # PM2.5
+  pmlow <- c(4,8)
+  pmhigh <- c(8,12)
+  pm25_est <- as.data.frame(emmeans(mo, "pm2.5", 
+                                   at = list(pm2.5 = c(4, 8, 12)), 
+                                   data = df, params = "my.knots"))
+  pm25_est$cov <- "pm2.5"
+  colnames(pm25_est) <- c("cov_level", "emmean", "SE", "df", "lower.CL", "upper.CL", "covariate")
+
+
+  # Age
+  age_est <- as.data.frame(emmeans(mo, "interview_age", 
+                                   at = list(interview_age = age_level_6), data = df, params = "my.knots"))
+  age_est$covariate = "age"
+  colnames(age_est) <- c("cov_level", "emmean", "SE", "df", "lower.CL", "upper.CL", "covariate")
+
+  # Parents' education
+  educ_est <- as.data.frame(emmeans(mo, "high.educ",
+                                    at = list(high.educ = high_education), data = df, params = "my.knots"))
+  educ_est$covariate <- "parent_educ"
+  colnames(educ_est) <- c("cov_level", "emmean", "SE", "df", "lower.CL", "upper.CL", "covariate")
+
+  # Household income
+  income_est <- as.data.frame(emmeans(mo, "overall.income",
+                                    at = list(overall.income = income), data = df, params = "my.knots"))
+  income_est$covariate = "income"
+  colnames(income_est) <- c("cov_level", "emmean", "SE", "df", "lower.CL", "upper.CL", "covariate")
+
+  est_table <- rbind(pm25_est, age_est, educ_est, income_est)
+  return(est_table)
+}
+
+make_pc_table <- function(model, data, outcome, hemisphere, tract){
+  quantile_est <- set_levels(model, data)
+  variables <- unique(quantile_est[c("covariate")])
+  perc_change_table <- data.frame()
+
+  for (i in 1:nrow(variables)) {
+    var <- filter(quantile_est, covariate == variables$covariate[i])
+    j = 1
+    pc_df <- data.frame()
+    while (j <= (nrow(var) - 1)) {
+      percent_change_est <- perc_change(var[j, 2], var[j, 3], var[j+1, 2], var[j+1, 3])
+      levels <- paste0(var[j, 1], " -> ", var[j+1, 1])
+      pc_df <- rbind(pc_df, cbind(var$covariate[1], levels, percent_change_est))
+      j <- j + 1
+    }
+    perc_change_table <- rbind(perc_change_table, pc_df)
+  }
+  
+  rounded_pc_table <- cbind(perc_change_table[,1:2], round(perc_change_table[,3:6], digits = 3))
+  rounded_pc_table <- cbind(outcome, tract, hemisphere,
+                            rounded_pc_table[,1:4], paste0("(", rounded_pc_table[,5], ", ", rounded_pc_table[,6], ")"))
+  colnames(rounded_pc_table) <- c("Outcome", "Tract", "Hemisphere", "Predictor", "Levels", "Percent Change", "SE", "95% CI")
+  return(rounded_pc_table)
+}
+
+perc_change <- function(est_first, se_first, est_second, se_second)
+{
+
+  percent_change <- ((est_second - est_first) / est_first) * 100
+  percent_change_se <- abs(est_second/est_first) * sqrt((se_second^2/est_second^2) +
+                                                        (se_first^2/est_first^2)) * 100
+  conf.High <- percent_change + 1.96*percent_change_se
+  conf.Low <- percent_change - 1.96*percent_change_se
+  return_df <- data.frame(percent_change, percent_change_se, conf.Low, conf.High)
+  return(return_df)
+}
+
+```
+
+# Print Percent Change tables
+```{r, warning = FALSE, message = FALSE}
+
+pc_summary <- data.frame()
+
+for (i in 1:length(sep_models)) {
+  mo <- sep_models[[i]]
+  model <- mo$spline_mod
+  tract <- mo$tract
+  outcome <- mo$outcome
+  hemisphere <- mo$hemisphere
+  
+  pc <- make_pc_table(model, df_HEI_wide, outcome, hemisphere, tract)
+  pc_summary <- rbind(pc_summary, pc)
+  
+}
+
+main_analysis_pc_summary = pc_summary
+
+
+hem = c("left", "right")
+for (j in 1:2) {
+  hem_df = filter(pc_summary, Hemisphere == hem[j])
+  for (i in 1:length(hei_tracts)) {
+    tract_df = filter(hem_df, Tract == hei_tracts[i])
+    tract_df = filter(tract_df, Predictor == "pm2.5")
+    
+    md = tract_df[grep("md", tract_df$Outcome),]
+    fa = tract_df[grep("fa", tract_df$Outcome),]
+    hei_fa_pc_table = rbind(hei_fa_pc_table, fa)
+    hei_md_pc_table = rbind(hei_md_pc_table, md)
+  }
+}
+
+hei_pc_summary = rbind(hei_fa_pc_table, hei_md_pc_table)
+
+write.csv(hei_pc_summary, paste0(savepath, "dti_sensitivity_pc_tables.csv"))
+```
+
+# Sensitivity Analysis for subjects with PM2.5 <= 12
+```{r}
+
+df_HEI_wide = df
+df_HEI_wide = filter(df_HEI_wide, pm2.5 <= 12)
+
+sep_models <- list()
+
+my.knots <- attr(ns(df$pm2.5, 3), "knots")
+
+sep_null_anova <- data.frame()
+sep_lin_anova <- data.frame()
+
+for (i in 1:nrow(key_sep)) {
+  
+  tract <- key_sep$tracts[i]
+  
+  ### Left
+  outcome <- key_sep$outcomes[i]
+  hemisphere <- key_sep$hemisphere[i]
+  
+  crude <- lmer(as.formula(paste(outcome, "~", 'ns(pm2.5, knots = my.knots) + sex + interview_age  + (1 | abcd_site)')),  data = df_HEI_wide, REML = FALSE, na.action = na.omit)
+  
+  mo <-  lmer(as.formula(paste(outcome, "~", 'ns(pm2.5, knots = my.knots) + sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site)')), 
+                   data = df_HEI_wide, REML = FALSE, na.action = na.omit)
+  
+  null_mo <- lmer(as.formula(paste(outcome, "~", 'sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site)')), 
+                   data = df_HEI_wide, REML = FALSE, na.action = na.omit)
+  
+  lin_mo <- lmer(as.formula(paste(outcome, "~", 'pm2.5 + sex + interview_age + race_ethnicity + high.educ + overall.income + demo_prnt_empl_v2 + neighb_phenx_avg_p + dmri_rsi_meanmotion + handedness + mri_info_manufacturer + (1 | abcd_site)')), 
+                   data = df_HEI_wide, REML = FALSE, na.action = na.omit)
+  
+  check_null <- anova(null_mo, mo)
+  null_df <- data.frame("Outcome" = outcome, "Tract" = tract, "Hemisphere" = hemisphere, "p-value" = check_null[2, "Pr(>Chisq)"])
+  sep_null_anova <- rbind(sep_null_anova, null_df)
+  
+  check_lin <- anova(lin_mo, mo)
+  lin_df <- data.frame("Outcome" = outcome, "Tract" = tract, "Hemisphere" = hemisphere, "p-value" = check_lin[2, "Pr(>Chisq)"])
+  sep_lin_anova <- rbind(sep_lin_anova, lin_df)
+  
+  sep_models[[outcome]]$spline_mod <- mo
+  sep_models[[outcome]]$lin_mod <- lin_mo
+  sep_models[[outcome]]$crude <- crude
+  sep_models[[outcome]]$tract <- tract
+  sep_models[[outcome]]$outcome <- outcome
+  sep_models[[outcome]]$hemisphere <- hemisphere
+  sep_models[[outcome]]$r2 <- rsquared(mo)
+}
+
+sensitivity_sep_models = sep_models
+
+```
+
+# Main analysis vs. sensitivity analysis comparison
+```{r}
+
+pc_summary <- data.frame()
+sep_models = sensitivity_sep_models
+for (i in 1:length(sep_models)) {
+  mo <- sep_models[[i]]
+  model <- mo$spline_mod
+  tract <- mo$tract
+  outcome <- mo$outcome
+  hemisphere <- mo$hemisphere
+  
+  pc <- make_pc_table(model, df_HEI_wide, outcome, hemisphere, tract)
+  pc_summary <- rbind(pc_summary, pc)
+  
+}
+
+pc_summary_sensitivity = pc_summary
+
+compare_pc = cbind(main_analysis_pc_summary, pc_summary_sensitivity)
+```
+
+
